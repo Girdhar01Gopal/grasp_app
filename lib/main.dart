@@ -2,32 +2,64 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:flutter/services.dart';
+import 'package:grasp_app/utils/landscape_only_gate.dart';
+import 'package:hive/hive.dart';
 import 'infrastructure/routes/admin_routes.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+
+  await SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.manual,
+    overlays: [],
+  );
+
+ 
+
   await GetStorage.init();
+
   runApp(AdminApp());
 }
 
 class AdminApp extends StatelessWidget {
-  final box = GetStorage();
+  const AdminApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isLoggedIn = box.read('isLoggedIn') ?? false;
+    final ThemeData lightTheme = ThemeData.light().copyWith(
+      primaryColor: Colors.blue,
+      appBarTheme: const AppBarTheme(color: Colors.blue),
+    );
+
+    final ThemeData darkTheme = ThemeData.dark().copyWith(
+      primaryColor: Colors.black,
+      appBarTheme: const AppBarTheme(color: Colors.black),
+    );
 
     return ScreenUtilInit(
-      designSize: Size(411.42, 890.28),
+      splitScreenMode: false,
+      minTextAdapt: true,
       builder: (_, __) {
         return GetMaterialApp(
-          title: 'Grasp_App',
+          title: 'Libravia',
           debugShowCheckedModeBanner: false,
           getPages: AdminRoutes.routes,
-          initialRoute: isLoggedIn
-              ?AdminRoutes.ADMIN_SPLASH
-              : AdminRoutes.ADMIN_SPLASH,
-          theme: ThemeData(useMaterial3: true),
+          initialRoute: AdminRoutes.ADMIN_SPLASH,
+          theme: lightTheme,
+          darkTheme: darkTheme,
+          themeMode: ThemeMode.system,
+
+          // ✅ Gate ENTIRE app here
+          builder: (context, child) {
+            return LandscapeOnlyGate(child: child ?? const SizedBox.shrink());
+          },
         );
       },
     );

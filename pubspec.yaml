@@ -53,15 +53,18 @@ dependencies:
   qr_flutter:
   firebase_core:
   firebase_messaging:
+  android_intent_plus:
   geolocator:
   open_file:
   file_picker:
+  loading_animation_widget:
   permission_handler:
   package_info_plus:
   hive:
   connectivity_plus:
   syncfusion_flutter_pdfviewer:
   share_plus:
+  flutter_cache_manager: ^3.4.1
 
 dev_dependencies:
   flutter_test:

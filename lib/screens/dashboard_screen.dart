@@ -1,242 +1,304 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:grasp_app/Model/librarymodel.dart';
+import 'package:grasp_app/screens/image_preview_screen.dart';
 import '../controllers/dashboard_controller.dart';
-import '../../infrastructure/app_drawer/admin_drawer2.dart';
-import '../screens/pdf_viewer_screen.dart'; // ✅ import the new PDF screen
-
+import 'pdf_viewer_screen.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final HomeController controller = Get.put(HomeController());
-    final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-    ScreenUtil.init(context, designSize: const Size(375, 812), minTextAdapt: true);
+    final controller = Get.put(HomeController());
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Scaffold(
-      key: _scaffoldKey,
-      drawer: AdminDrawer2(),
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF2F4F8),
+
+      /// ---------------- APP BAR ----------------
       appBar: AppBar(
-        backgroundColor: const Color(0xFFE53935),
+        backgroundColor: const Color(0xFFC49B3B),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.notes, color: Colors.white, size: 28),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-        ),
+        centerTitle: true,
         title: const Text(
-          'DIGIPACK',
+          "Libravia",
           style: TextStyle(
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
+            letterSpacing: .5,
             color: Colors.white,
-            letterSpacing: 1.5,
           ),
         ),
-        actions: [
-          Padding(
-            padding: EdgeInsets.only(right: 16.w),
-            child: RichText(
-              text: const TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'e',
+      ),
+
+      body: Stack(
+        children: [
+          /// ---------------- BACKGROUND IMAGE ----------------
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.08,
+              child: Image.asset(
+                "assets/images/FIITJEE_Logo.png",
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+
+          /// ---------------- MAIN CONTENT ----------------
+          Obx(() {
+            if (controller.isLoading.value) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            return Column(
+              children: [
+                /// SUBJECT TABS
+                const _SubjectTabs(),
+
+                /// GRID + REFRESH
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: controller.fetchLibrary,
+                    child: Obx(() {
+                      final list = controller.currentLibraries;
+
+                      if (list.isEmpty) {
+                        return ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: const [
+                            SizedBox(height: 250),
+                            Center(
+                              child: Text(
+                                "No Library Files Found",
+                                style: TextStyle(fontSize: 16),
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      final crossAxisCount = isLandscape ? 5 : 2;
+                      final aspect = isLandscape ? 1.15 : 0.82;
+
+                      return GridView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: EdgeInsets.all(16.w),
+                        gridDelegate:
+                            SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          mainAxisSpacing: 16,
+                          crossAxisSpacing: 16,
+                          childAspectRatio: aspect,
+                        ),
+                        itemCount: list.length,
+                        itemBuilder: (_, i) => _ProfessionalLibraryCard(list[i]),
+                      );
+                    }),
+                  ),
+                ),
+              ],
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubjectTabs extends GetView<HomeController> {
+  const _SubjectTabs();
+
+  @override
+  Widget build(BuildContext context) {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    return Obx(() {
+      final subjects = controller.subjects;
+
+      if (subjects.isEmpty) {
+        return SizedBox(height: isLandscape ? 56.h : 70.h);
+      }
+
+      return SizedBox(
+        height: isLandscape ? 76.h : 70.h,
+        child: ListView.builder(
+          key: ValueKey('${subjects.length}_${controller.selectedTabIndex.value}'),
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+          itemCount: subjects.length,
+          itemBuilder: (_, i) {
+            final selected = controller.selectedTabIndex.value == i;
+            return GestureDetector(
+              onTap: () => controller.changeTab(i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                margin: EdgeInsets.only(right: 12.w),
+                padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 10.h),
+                decoration: BoxDecoration(
+                  color: selected ? const Color(0xFFC49B3B) : Colors.white,
+                  borderRadius: BorderRadius.circular(40),
+                  border: Border.all(color: const Color(0xFFC49B3B)),
+                  boxShadow: [
+                    if (selected)
+                      BoxShadow(
+                        color: const Color(0xFFC49B3B).withOpacity(.35),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    subjects[i],
                     style: TextStyle(
-                      color: Colors.indigo,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                      letterSpacing: 1.2,
+                      color: selected ? Colors.white : Colors.black87,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 6.sp,
                     ),
                   ),
-                  TextSpan(
-                    text: 'CM',
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                      letterSpacing: 1.2,
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    });
+  }
+}
+
+class _ProfessionalLibraryCard extends StatelessWidget {
+  final Data item;
+  const _ProfessionalLibraryCard(this.item);
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<HomeController>();
+
+    final fileUrl = controller.buildUrl(item.libraryimg ?? "");
+    final isImg = controller.isImage(fileUrl);
+    final isPdf = controller.isPdf(fileUrl);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: () {
+        if (isPdf) {
+          Get.to(() => PdfViewerScreen(
+                pdfTitle: item.librarytext ?? "PDF",
+                pdfUrl: fileUrl,
+              ));
+        } else if (isImg) {
+          Get.to(() => ImagePreviewScreen(
+                title: item.librarytext ?? "Image",
+                imageUrl: fileUrl,
+              ));
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            /// ---------- PREVIEW ----------
+            Expanded(
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(18)),
+                    child: isImg
+                        ? Image.network(
+                            fileUrl,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            cacheWidth: 700,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                color: const Color(0xFFF1F3F6),
+                                child: const Center(
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              );
+                            },
+                            errorBuilder: (_, __, ___) => Container(
+                              color: const Color(0xFFF1F3F6),
+                              child: const Center(
+                                child: Icon(Icons.broken_image,
+                                    size: 30, color: Colors.grey),
+                              ),
+                            ),
+                          )
+                        : Container(
+                            color: const Color(0xFFF1F3F6),
+                            child: const Center(
+                              child: Icon(
+                                Icons.picture_as_pdf,
+                                size: 44,
+                                color: Colors.red,
+                              ),
+                            ),
+                          ),
+                  ),
+
+                  /// File type badge
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isPdf ? Colors.red : Colors.blue,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        isPdf ? "PDF" : "IMG",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 7,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
 
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/background_image_grasp.png',
-              fit: BoxFit.cover,
+            /// ---------- TITLE ----------
+            Padding(
+              padding: EdgeInsets.all(12.w),
+              child: Text(
+                item.librarytext ?? "",
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 7.sp,
+                  height: 1.3,
+                ),
+              ),
             ),
-          ),
 
-          Column(
-            children: [
-              SizedBox(height: 12.h),
-
-              /// 🔹 Subject Tabs
-              Obx(() {
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  padding: EdgeInsets.symmetric(horizontal: 12.w),
-                  child: Row(
-                    children: List.generate(controller.subjects.length, (index) {
-                      final isSelected = controller.selectedTabIndex.value == index;
-                      return Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8.w),
-                        child: GestureDetector(
-                          onTap: () => controller.changeTab(index),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 10.h),
-                            decoration: BoxDecoration(
-                              color: isSelected ? Colors.red : Colors.white,
-                              borderRadius: BorderRadius.circular(8.r),
-                              border: Border.all(color: Colors.red, width: 1.5),
-                            ),
-                            child: Text(
-                              controller.subjects[index],
-                              style: TextStyle(
-                                color: isSelected ? Colors.white : Colors.black87,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15.sp,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                );
-              }),
-
-              SizedBox(height: 20.h),
-
-              /// 🔹 Tab Content
-              Expanded(
-                child: Obx(() {
-                  final selected = controller.selectedTabIndex.value;
-
-                  if (selected == 0) {
-                    return _subjectSection(
-                      color: Colors.blue.shade700,
-                      shortCode: "CHEM",
-                      cards: [
-                        {"title": "ARCHIVES-2023-24-ADVANCE-CHEMISTRY", "date": "2023-08-13"},
-                        {"title": "ARCHIVE-JEE-MAIN-2023-24-CHEMISTRY", "date": "2023-07-25"},
-                      ],
-                    );
-                  } else if (selected == 1) {
-                    return _subjectSection(
-                      color: Colors.deepPurple,
-                      shortCode: "PHY",
-                      cards: [
-                        {"title": "ARCHIVES-2023-24-ADVANCE-PHYSICS", "date": "2023-08-13"},
-                        {"title": "ARCHIVE-JEE-MAIN-2023-24-PHYSICS", "date": "2023-07-25"},
-                      ],
-                    );
-                  } else {
-                    return _subjectSection(
-                      color: Colors.amber.shade800,
-                      shortCode: "MATHS",
-                      cards: [
-                        {"title": "ARCHIVE-JEE-MAIN-2023-24-MATHEMATICS", "date": "2023-07-25"},
-                        {"title": "ARCHIVES-2023-24-ADVANCE-MATHEMATICS", "date": "2023-08-19"},
-                      ],
-                    );
-                  }
-                }),
-              ),
-
-              /// 🔹 Footer
-              Container(height: 25.h, color: Colors.white),
-              Container(
-                height: 80.h,
-                width: double.infinity,
-                color: Colors.blue.shade700,
-                padding: EdgeInsets.symmetric(horizontal: 18.w),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text("eCM",
-                        style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w500)),
-                    Text("FIITJEE",
-                        style: TextStyle(color: Colors.white, fontSize: 25, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 🔹 Subject Section
-  Widget _subjectSection({
-    required Color color,
-    required String shortCode,
-    required List<Map<String, String>> cards,
-  }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-      child: SingleChildScrollView(
-        child: Wrap(
-          spacing: 20.w,
-          runSpacing: 20.h,
-          alignment: WrapAlignment.center,
-          children: cards.map((data) {
-            return SizedBox(
-              width: 0.38.sw,
-              height: 0.25.sh,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: color.withOpacity(0.95),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  elevation: 6,
-                  shadowColor: Colors.black26,
-                  padding: EdgeInsets.all(12.w),
-                ),
-                onPressed: () => _openPdf(data["title"]!, data["date"]!),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      children: [
-                        Text(shortCode,
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 22.sp,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2)),
-                        SizedBox(height: 8.h),
-                        Text(data["title"]!,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.white, fontSize: 13.sp, height: 1.3)),
-                      ],
-                    ),
-                    Text(data["date"]!,
-                        style: TextStyle(color: Colors.white70, fontSize: 13.sp, fontWeight: FontWeight.w500)),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
+            SizedBox(height: 10.h),
+          ],
         ),
       ),
     );
-  }
-
-  /// 🔹 Opens the PDF viewer screen
-  void _openPdf(String title, String date) {
-    Get.to(() => PdfViewerScreen(
-      pdfTitle: title,
-      pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-    ));
   }
 }

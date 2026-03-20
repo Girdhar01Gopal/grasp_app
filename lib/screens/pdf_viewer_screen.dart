@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'dart:io';
 
-class PdfViewerScreen extends StatelessWidget {
+class PdfViewerScreen extends StatefulWidget {
   final String pdfTitle;
   final String pdfUrl;
 
@@ -13,62 +13,88 @@ class PdfViewerScreen extends StatelessWidget {
     required this.pdfUrl,
   });
 
-  /// Opens the PDF link in an external browser to download
-  Future<void> _downloadPdf() async {
-    final Uri url = Uri.parse(pdfUrl);
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      debugPrint("Could not launch $pdfUrl");
+  @override
+  State<PdfViewerScreen> createState() => _PdfViewerScreenState();
+}
+
+class _PdfViewerScreenState extends State<PdfViewerScreen> {
+  File? _cachedFile;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPdf();
+  }
+
+  Future<void> _loadPdf() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final file = await DefaultCacheManager().getSingleFile(widget.pdfUrl);
+      setState(() {
+        _cachedFile = file;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to load PDF';
+        _loading = false;
+      });
     }
   }
 
-  /// Shares the PDF link
-  void _sharePdf() {
-    Share.share('📄 $pdfTitle\n$pdfUrl');
+  void _clearCache() async {
+    await DefaultCacheManager().removeFile(widget.pdfUrl);
+    setState(() {
+      _cachedFile = null;
+      _loading = true;
+    });
+    _loadPdf();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.red.shade700,
-        title: Text(
-          pdfTitle,
-          style: const TextStyle(fontSize: 16),
-          overflow: TextOverflow.ellipsis,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
         ),
-      ),
-      body: SfPdfViewer.network(pdfUrl),
-
-      /// Floating Download + Share buttons
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: "download_btn",
-            backgroundColor: Colors.blue.shade700,
-            icon: const Icon(Icons.download_rounded, color: Colors.white),
-            label: const Text(
-              "Download",
-              style: TextStyle(color: Colors.white),
-            ),
-            onPressed: _downloadPdf,
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton.extended(
-            heroTag: "share_btn",
-            backgroundColor: Colors.green.shade600,
-            icon: const Icon(Icons.share_rounded, color: Colors.white),
-            label: const Text(
-              "Share",
-              style: TextStyle(color: Colors.white),
-            ),
-            onPressed: _sharePdf,
+        backgroundColor: const Color(0xFFC49B3B),
+        title: Text(
+          widget.pdfTitle,
+          style: const TextStyle(fontSize: 16, color: Colors.white),
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Clear Cache & Reload',
+            onPressed: _clearCache,
           ),
         ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(child: Text(_error!))
+              : _cachedFile != null
+                  ? SfPdfViewer.file(
+                      _cachedFile!,
+                      canShowScrollHead: true,
+                      canShowScrollStatus: true,
+                      pageLayoutMode: PdfPageLayoutMode.continuous,
+                      onDocumentLoadFailed: (details) {
+                        setState(() {
+                          _error = 'PDF ERROR: \\${details.error}';
+                        });
+                      },
+                    )
+                  : const Center(child: Text('No PDF file loaded.')),
     );
   }
 }

@@ -1,11 +1,12 @@
 import 'package:get/get.dart';
+import 'package:grasp_app/bindings/loginbinding.dart';
+import 'package:grasp_app/screens/login.dart';
 import '../../bindings/Loading_Binding.dart';
 import '../../bindings/bindings.dart';
 import '../../bindings/dashboard_binding.dart';
 import '../../screens/Loading_Screen.dart';
 import '../../screens/admin_splash_screen.dart';
 import '../../screens/dashboard_screen.dart';
-import '../../screens/usage_screen.dart';
 
 class AdminRoutes {
   // ==================
@@ -17,6 +18,8 @@ class AdminRoutes {
   static const MAIN_SCREEN = '/mainScreen';
   static const CONTINUE_SCREEN = '/continue';
   static const usageScreen = '/usageScreen';
+    static const loginscreen = '/loginscreen';
+
 
   // ========
   // Route Definitions
@@ -36,7 +39,11 @@ class AdminRoutes {
       page: () => LoadingScreen(),
       binding: LoadingBinding(),
     ),
-
+ GetPage(
+      name: loginscreen,
+      page: () => LoginScreen(),
+      binding: Loginbinding(),
+    ),
     // Home Screen
     GetPage(
       name: homeScreen,
@@ -44,10 +51,6 @@ class AdminRoutes {
       binding: HomeBinding(),
     ),
 
-    GetPage(
-      name: usageScreen,
-      page: () => UsageScreen(),
-      binding: UsageBinding(),
-    ),
+  
   ];
 }
