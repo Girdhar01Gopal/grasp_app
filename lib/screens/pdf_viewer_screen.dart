@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'dart:io';
@@ -18,6 +19,7 @@ class PdfViewerScreen extends StatefulWidget {
 }
 
 class _PdfViewerScreenState extends State<PdfViewerScreen> {
+  final CacheManager _cacheManager = DefaultCacheManager();
   File? _cachedFile;
   bool _loading = true;
   String? _error;
@@ -34,21 +36,51 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       _error = null;
     });
     try {
-      final file = await DefaultCacheManager().getSingleFile(widget.pdfUrl);
+      final cachedInfo = await _cacheManager.getFileFromCache(widget.pdfUrl);
+      if (cachedInfo != null) {
+        if (!mounted) return;
+        setState(() {
+          _cachedFile = cachedInfo.file;
+          _loading = false;
+        });
+        return;
+      }
+
+      final connectivityResult = await Connectivity().checkConnectivity();
+      final hasConnection = connectivityResult is List<ConnectivityResult>
+          ? connectivityResult.any(
+              (result) => result != ConnectivityResult.none,
+            )
+          : connectivityResult != ConnectivityResult.none;
+
+      if (!hasConnection) {
+        if (!mounted) return;
+        setState(() {
+          _error =
+              'No internet connection and this PDF is not available offline yet.';
+          _loading = false;
+        });
+        return;
+      }
+
+      final file = await _cacheManager.getSingleFile(widget.pdfUrl);
+      if (!mounted) return;
       setState(() {
         _cachedFile = file;
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _error = 'Failed to load PDF';
+        _error =
+            'Failed to load PDF. Check your connection or try again later.';
         _loading = false;
       });
     }
   }
 
   void _clearCache() async {
-    await DefaultCacheManager().removeFile(widget.pdfUrl);
+    await _cacheManager.removeFile(widget.pdfUrl);
     setState(() {
       _cachedFile = null;
       _loading = true;
@@ -81,20 +113,20 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!))
-              : _cachedFile != null
-                  ? SfPdfViewer.file(
-                      _cachedFile!,
-                      canShowScrollHead: true,
-                      canShowScrollStatus: true,
-                      pageLayoutMode: PdfPageLayoutMode.continuous,
-                      onDocumentLoadFailed: (details) {
-                        setState(() {
-                          _error = 'PDF ERROR: \\${details.error}';
-                        });
-                      },
-                    )
-                  : const Center(child: Text('No PDF file loaded.')),
+          ? Center(child: Text(_error!))
+          : _cachedFile != null
+          ? SfPdfViewer.file(
+              _cachedFile!,
+              canShowScrollHead: true,
+              canShowScrollStatus: true,
+              pageLayoutMode: PdfPageLayoutMode.continuous,
+              onDocumentLoadFailed: (details) {
+                setState(() {
+                  _error = 'PDF ERROR: \\${details.error}';
+                });
+              },
+            )
+          : const Center(child: Text('No PDF file loaded.')),
     );
   }
 }

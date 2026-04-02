@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:grasp_app/Model/librarymodel.dart';
+import 'package:grasp_app/infrastructure/routes/admin_routes.dart';
 import 'package:grasp_app/screens/image_preview_screen.dart';
 import '../controllers/dashboard_controller.dart';
 import 'pdf_viewer_screen.dart';
@@ -30,6 +31,14 @@ class HomeScreen extends StatelessWidget {
             color: Colors.white,
           ),
         ),
+        actions: [
+          IconButton(
+            onPressed: (){
+               Get.offAllNamed(AdminRoutes.loginscreen);
+            },
+            icon: const Icon(Icons.lock, color: Colors.white),
+          ),
+        ],
       ),
 
       body: Stack(
