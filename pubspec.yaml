@@ -56,7 +56,8 @@ dependencies:
   android_intent_plus:
   geolocator:
   open_file:
-  file_picker:
+  pdfrx: ^2.4.4
+  file_picker: ^11.0.2  
   loading_animation_widget:
   permission_handler:
   package_info_plus:

@@ -35,7 +35,7 @@ class HomeController extends GetxController {
     if (p.isEmpty) return "";
     // prevent double slashes
     final clean = p.startsWith("/") ? p.substring(1) : p;
-    return Uri.encodeFull("https://student.maharishiglobal.org/$clean");
+    return Uri.encodeFull("https://student.maharishiglobal.in/$clean");
   }
 
   bool isImage(String? url) {
@@ -139,7 +139,7 @@ class HomeController extends GetxController {
       }
 
       final url =
-          "https://student.maharishiglobal.org/api/MobApp/AppMobLibrary/$schoolId/$studentId/$courseId/$batchid";
+          "https://student.maharishiglobal.in/api/MobApp/AppMobLibrary/$schoolId/$studentId/$courseId/$batchid";
       print(url);
       final res = await http.get(
         Uri.parse(url),

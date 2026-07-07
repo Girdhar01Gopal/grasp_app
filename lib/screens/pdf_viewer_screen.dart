@@ -3,6 +3,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'dart:io';
+import 'dart:async';
 
 class PdfViewerScreen extends StatefulWidget {
   final String pdfTitle;
@@ -20,14 +21,59 @@ class PdfViewerScreen extends StatefulWidget {
 
 class _PdfViewerScreenState extends State<PdfViewerScreen> {
   final CacheManager _cacheManager = DefaultCacheManager();
+  final Connectivity _connectivity = Connectivity();
+  late StreamSubscription<dynamic> _connectivitySubscription;
   File? _cachedFile;
   bool _loading = true;
   String? _error;
+  bool _hasConnectivity = false;
 
   @override
   void initState() {
     super.initState();
+    _checkInitialConnectivity();
+    _listenToConnectivityChanges();
     _loadPdf();
+  }
+
+  Future<void> _checkInitialConnectivity() async {
+    try {
+      final result = await _connectivity.checkConnectivity();
+      final hasConnection = result is List<ConnectivityResult>
+          ? result.any((r) => r != ConnectivityResult.none)
+          : result != ConnectivityResult.none;
+      if (mounted) {
+        setState(() {
+          _hasConnectivity = hasConnection;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _hasConnectivity = false;
+        });
+      }
+    }
+  }
+
+  void _listenToConnectivityChanges() {
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((
+      result,
+    ) {
+      if (!mounted) return;
+      final hasConnection = result is List<ConnectivityResult>
+          ? result.any((r) => r != ConnectivityResult.none)
+          : result != ConnectivityResult.none;
+      setState(() {
+        _hasConnectivity = hasConnection;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription.cancel();
+    super.dispose();
   }
 
   Future<void> _loadPdf() async {
@@ -103,11 +149,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         ),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Clear Cache & Reload',
-            onPressed: _clearCache,
-          ),
+          if (_hasConnectivity)
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Clear Cache & Reload',
+              onPressed: _clearCache,
+            ),
         ],
       ),
       body: _loading
